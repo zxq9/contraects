@@ -1,5 +1,5 @@
 /*
- * Maerket Sales Contract
+ * Maerket Sales Offer
  *
  * Author:      Craig Everett <ceverett@tsuriai.jp>
  * Copyright:   Tsuriai Corporation (2022)
@@ -30,6 +30,8 @@
  *
  * All calls to clones of this contract are checked by caller.
  */
+
+@compiler == 6.1
 
 include "Option.aes"
 

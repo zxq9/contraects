@@ -11,55 +11,84 @@
  *   - A library of valid contracts by type (sales offers, auctions, etc.)
  *   - Managing the authorized key list of maerket maesters
  *   - Providing a single known endpoint to discover deployed, active contracts
+ *   - Manaing the lifecycle of a maerket contract
+ *
+ * Lifecycle of a sales offer:
+ *   1. The seller calls MaerketBase.post_sale() to create his SaleOffer
+ *   2. Sale proceeds
+ *     IF it is succesful, the contract calls MaerketBase.drop()
+ *     IF it is revoked by seller, the contract calls MaerketBase.drop()
+ *     IF it times out or is killed by the maesters, one calls MaerketBase.kill()
  */
 
-contract interface SalesOffer =
-    payable entrypoint kill : () => bool
+@compiler == 6.1
+
+include "List.aes"
+
+contract interface SaleOffer =
+    entrypoint init : (int) => void
+    payable entrypoint kill : () => void
 
 
 contract MaerketBase =
     record state =
-        {contracts : map(int, address), 
-         templates : map(string, address),
+        {contracts : map(int, sale_entry),
+         template  : SaleOffer,
          maesters  : list(address),
          tsuriai   : address}
 
-    stateful entrypoint init(maesters: list(address), tsuriai: address) = 
+    record sale_entry =
+        {offer  : SaleOffer,
+         seller : address}
+
+    stateful entrypoint init(template : SaleOffer,
+                             maesters : list(address),
+                             tsuriai  : address) : state = 
         {contracts = {},
-         templates = {},
+         template  = template,
          maesters  = maesters,
          tsuriai   = tsuriai}
 
-    public entrypoint template(type: string) : address =
-        state.templates[type]
-    
-    public entrypoint lookup(id: int) : address =
-        state.contracts[id]
+    public entrypoint template() : SaleOffer =
+        state.template
 
-    public stateful entrypoint post_sale(id: int, price: int) : address =
-        // FIXME: do some magic call shit in post_contract/4
-        let posted_contract = clone_contract(state.template, Call.caller, price)
-        put(state.contracts{[id] = posted_contract})
-        posted_contract
+    public entrypoint lookup(id: int) : option(SaleOffer) =
+        switch(Map.lookup(id, state.contracts))
+            Some(found) =>
+                let target = found.offer
+                Some(target)
+            None =>
+                None
 
-    private stateful entrypoint clone_contract(template: string,
-                                               owner:    address,
-                                               price:    int) : address =
-    // MAGIC HAPPENS HERE
+    public stateful entrypoint post_sale(id: int, price: int) : option(SaleOffer) =
+        require(!Map.member(id, state.contracts), "Sale already exists")
+        switch(Chain.clone(ref = state.template, protected = true, price))
+            Some(posted) =>
+                let sale = {offer = posted, seller = Call.caller}
+                put(state{contracts = state.contracts{[id] = sale}})
+                Some(posted)
+            None =>
+                abort("Bad sale!")
 
+    public stateful entrypoint kill(id: int) : bool =
+        require(List.contains(Call.caller, state.maesters), "You're not a killer")
+        switch(Map.lookup(id, state.contracts))
+            Some(target) =>
+                put(state{contracts = Map.delete(id, state.contracts)})
+                target.offer.kill()
+                true
+            None =>
+                false
 
-    public stateful entrypoint kill(id: address) : bool =
-        require(List.contains(Call.caller, state.maesters))
-        require(Map.member(id, state.contracts))
-        let target = Map.lookup(id, state.contracts)
-        // Call target's destroy function
+    public stateful entrypoint drop(id: int) : bool =
+        switch(Map.lookup(id, state.contracts))
+            Some(target) =>
+                require(target.seller == Call.caller, "Bad caller")
+                put(state{contracts = Map.delete(id, state.contracts)})
+                true
+            None =>
+                false
 
     public stateful entrypoint update_maesters(keys: list(address)) =
-        require(Call.caller == state.tsuriai)
-        put(state.maesters = keys)
-
-    public stateful entrypoint cancel_sale_contract(id: int) =
-        require(List.contains(Call.caller, state.maesters))
-        require(Map.member(id, state.contracts))
-        let target = Map.lookup(id, state.contracts)
-        target.cancel()
+        require(Call.caller == state.tsuriai, "You didn't say the magic word!")
+        put(state{maesters = keys})
