@@ -1,0 +1,50 @@
+contract interface SalesOffer =
+    payable entrypoint kill : () => bool
+
+
+contract MaerketBase =
+    record state =
+        {contracts : map(int, address), 
+         templates : map(string, address),
+         maesters  : list(address),
+         tsuriai   : address}
+
+    stateful entrypoint init(maesters: list(address), tsuriai: address) = 
+        {contracts = {},
+         templates = {},
+         maesters  = maesters,
+         tsuriai   = tsuriai}
+
+    public entrypoint template(type: string) : address =
+        state.templates[type]
+    
+    public entrypoint lookup(id: int) : address =
+        state.contracts[id]
+
+    public stateful entrypoint post_sale(id: int, price: int) : address =
+        // FIXME: do some magic call shit in post_contract/4
+        let posted_contract = clone_contract(state.template, Call.caller, price)
+        put(state.contracts{[id] = posted_contract})
+        posted_contract
+
+    private stateful entrypoint clone_contract(template: string,
+                                               owner:    address,
+                                               price:    int) : address =
+    // MAGIC HAPPENS HERE
+
+
+    public stateful entrypoint kill(id: address) : bool =
+        require(List.contains(Call.caller, state.maesters))
+        require(Map.member(id, state.contracts))
+        let target = Map.lookup(id, state.contracts)
+        // Call target's destroy function
+
+    public stateful entrypoint update_maesters(keys: list(address)) =
+        require(Call.caller == state.tsuriai)
+        put(state.maesters = keys)
+
+    public stateful entrypoint cancel_sale_contract(id: int) =
+        require(List.contains(Call.caller, state.maesters))
+        require(Map.member(id, state.contracts))
+        let target = Map.lookup(id, state.contracts)
+        target.cancel()

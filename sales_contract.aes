@@ -1,0 +1,49 @@
+/*
+ * Maerket Sales Contract
+ *
+ * Author:      Craig Everett <ceverett@tsuriai.jp>
+ * Copyright:   Tsuriai Corporation (2022)
+ * License:     GPLv3
+ * Version:     1.0
+ *
+ * Sale offers at Maerket (maerket.psychobitch.party) are clones of this contract.
+ * (The name might be a little weird, but who looks at domain names anymore anyway?)
+ * When a sale offer is created on the site, the seller signs a contract call to
+ * 
+ *
+ * Calls to clones of this contract can come from three sources:
+ *  1. The base contract (that cloned it in the first place)
+ *      - kill()                    // Disable the contract at any state,
+ *                                  // taking appropriate payout actions when it does
+ *  2. The sellers who posted clones of this contract
+ *      - init(price: int)          // initial posting
+ *      - set_price(price : int)    // update during negotiation 
+ *      - finalize()                // Sale is DONE & disabled
+ *      - refuse()                  // Cancel a negotation
+ *      - revoke()                  // Disable and remove/invalidate this offer
+ *  3. Buyers who are interested in buying through this contract
+ *      - reserve()                 // Place money within the contract on escrow
+ *                                  // to reserve it
+ *      - set_bid(int)              // Update the bid amout in negotiation
+ *      - finalize()                // Sale is DONE & disabled
+ *      - refuse()                  // Back out of a sales offer reservation
+ *
+ * All calls to clones of this contract are checked by caller.
+ */
+
+include "Option.aes"
+
+contract SalesOffer =
+    record state =
+        {base_contract : address,
+         price         : int,
+         seller        : address,
+         buyer         : option(address)}
+
+    stateful entrypoint init(base_contract : address, price: int, seller = address) =
+        {base_contract = base_contract,
+         price         = price,
+         seller        = seller,
+         buyer         = None}
+
+
