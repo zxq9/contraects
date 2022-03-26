@@ -1,3 +1,18 @@
+/*
+ * Maerket Base Contract
+ *
+ * Author:      Craig Everett <ceverett@tsuriai.jp>
+ * Copyright:   Tsuriai Corporation (2022)
+ * License:     GPLv3
+ * Version:     0.1
+ *
+ * This is the base contract for the maerket.
+ * It is responsible for:
+ *   - A library of valid contracts by type (sales offers, auctions, etc.)
+ *   - Managing the authorized key list of maerket maesters
+ *   - Providing a single known endpoint to discover deployed, active contracts
+ */
+
 contract interface SalesOffer =
     payable entrypoint kill : () => bool
 
