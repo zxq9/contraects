@@ -32,8 +32,6 @@
  *  5. The maerket's network service (or the public)
  *      - price()                     // Check current contract price
  *      - status()                    // Check contract status
- *
- * All calls to clones of this contract are checked by caller.
  */
 
 @compiler == 6.1

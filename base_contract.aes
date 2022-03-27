@@ -11,7 +11,7 @@
  *   - A library of valid contracts by type (sales offers, auctions, etc.)
  *   - Managing the authorized key list of maerket maesters
  *   - Providing a single known endpoint to discover deployed, active contracts
- *   - Manaing the lifecycle of a maerket contract
+ *   - Managing the lifecycle of a maerket contract
  *
  * Lifecycle of a sales offer:
  *   1. The seller calls MaerketBase.post_sale() to create his SaleOffer
