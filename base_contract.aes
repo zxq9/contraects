@@ -46,16 +46,16 @@ contract MaerketBase =
          tsuriai   = tsuriai}
 
     public entrypoint template() : SaleOffer =
-        state.template
+    state.template
 
-    public entrypoint lookup(id: int) : option(SaleOffer) =
+    public entrypoint lookup(id: int) : SaleOffer =
         switch(Map.lookup(id, state.contracts))
             Some(target) =>
-                Some(target)
+                target
             None =>
-                None
+                abort("Bad ID!")
 
-    public stateful entrypoint post_sale(id: int, price: int) : option(SaleOffer) =
+    public stateful entrypoint post_sale(id: int, price: int) : SaleOffer =
         require(!Map.member(id, state.contracts), "Sale already exists")
         switch(Chain.clone(ref       = state.template,
                            protected = true,
@@ -65,7 +65,7 @@ contract MaerketBase =
                            price))
             Some(posted) =>
                 put(state{contracts = state.contracts{[id] = posted}})
-                Some(posted)
+                posted
             None =>
                 abort("Bad sale!")
 
@@ -78,7 +78,7 @@ contract MaerketBase =
             None =>
                 false
 
-    public stateful entrypoint update_maesters(keys: list(address)) =
+    public stateful entrypoint update_maesters(keys: list(address)) : unit =
         require(Call.caller == state.tsuriai, "You didn't say the magic word!")
         put(state{maesters = keys})
 
