@@ -11,41 +11,80 @@
  * When a sale offer is created on the site, the seller signs a contract call to
  * 
  *
- * Calls to clones of this contract can come from three sources:
+ * Calls to clones of this contract can come from four sources:
  *  1. The base contract (that cloned it in the first place)
  *      - kill()                    // Disable the contract at any state,
  *                                  // taking appropriate payout actions when it does
  *  2. The sellers who posted clones of this contract
- *      - init(price: int)          // initial posting
- *      - set_price(price : int)    // update during negotiation 
- *      - finalize()                // Sale is DONE & disabled
+ *      - init(base_contract : MaerketBase,
+ *             id            : int,
+ *             price         : int)
+ *      - adjust(price : int)    // update during negotiation 
+ *      - accept()                  // Sale is DONE
  *      - refuse()                  // Cancel a negotation
- *      - revoke()                  // Disable and remove/invalidate this offer
+ *      - revoke()                  // Invalidate and disable this offer
+ *      - clear()                   // Lock and clear this offer (successfully)
  *  3. Buyers who are interested in buying through this contract
  *      - reserve()                 // Place money within the contract on escrow
  *                                  // to reserve it
  *      - set_bid(int)              // Update the bid amout in negotiation
- *      - finalize()                // Sale is DONE & disabled
  *      - refuse()                  // Back out of a sales offer reservation
+ *  4. The maerket
+ *      - price()
+ *      - status()
  *
  * All calls to clones of this contract are checked by caller.
  */
 
 @compiler == 6.1
 
-include "Option.aes"
+contract interface MaerketBase =
+    stateful entrypoint drop : (int)  => bool
 
 contract SalesOffer =
     record state =
-        {base_contract : address,
+        {id            : int,
+         base_contract : MaerketBase,
          price         : int,
-         seller        : address,
-         buyer         : option(address)}
+         buyer         : option(address),
+         status        : status
+         seller_agree  : bool
+         buyer_agree   : bool}
 
-    stateful entrypoint init(base_contract : address, price: int, seller = address) =
-        {base_contract = base_contract,
+    datatype status = OPEN | NEGO | DONE
+
+    stateful entrypoint init(base_contract : MaerketBase,
+                             id            : int,
+                             price         : int) : state =
+        {id            = id,
+         base_contract = base_contract,
          price         = price,
-         seller        = seller,
          buyer         = None}
 
+    public stateful adjust(price : int) =>
+        require(Call.caller == Contract.creator, "You're not the seller.")
+        require(price > 0, "Prices must be greater than zero.")
+        put(state{price = price})
 
+    public stateful accept() : bool =>
+        require(Call.caller == Contract.creator, "Unauthorized")
+        
+        put(state.status = DONE)
+        
+        switch(state.base_contract.conclude(state.id))
+            true =>
+            false =>
+                false
+
+
+    kill()
+    adjust(price : int)
+    accept()
+    refuse()
+    revoke()
+    clear()
+    reserve()
+    set_bid(int)
+    refuse()
+    price()
+    status()
