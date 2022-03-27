@@ -16,8 +16,8 @@
  * Lifecycle of a sales offer:
  *   1. The seller calls MaerketBase.post_sale() to create his SaleOffer
  *   2. Sale proceeds
- *     IF it is succesful, the contract calls MaerketBase.drop()
- *     IF it is revoked by seller, the contract calls MaerketBase.drop()
+ *     IF it is succesful, the contract calls MaerketBase.close()
+ *     IF it is revoked by seller, the contract calls MaerketBase.close()
  *     IF it times out or is killed by the maesters, one calls MaerketBase.kill()
  */
 
