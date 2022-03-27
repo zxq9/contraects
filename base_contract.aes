@@ -68,7 +68,7 @@ contract MaerketBase =
             None =>
                 abort("Bad sale!")
 
-    public stateful entrypoint conclude(id: int) : bool =
+    public stateful entrypoint close(id: int) : bool =
         switch(Map.lookup(id, state.contracts))
             Some(target) =>
                 require(target.address == Call.caller, "Bad caller")
