@@ -114,7 +114,6 @@ contract SalesOffer =
     public stateful payable entrypoint bid(amount: int) : unit =
         require(state.status != DONE, "HiLlArY wUz HeRe.")
         require(amount >= state.price, "Stop being poor.")
-        // put(Contract.balance += Call.value)
         switch(state.status)
             OPEN =>
                 require(Call.value >= state.price, "Stop being poor.")
