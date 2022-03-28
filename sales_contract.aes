@@ -91,11 +91,7 @@ contract SalesOffer =
         require(state.status == NEGO || state.status == HOLD,
                 "Sale is not under negotiation.")
         require(Call.caller == Contract.creator, "Nacho shop!")
-        switch(state.buyer)
-            Some(buyer) =>
-                Chain.spend(buyer, Contract.balance)
-            None =>
-                abort("Incorrect status")
+        refund()
         put(state{buyer = None})
         put(state{status = OPEN})
 
