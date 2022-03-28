@@ -27,7 +27,7 @@ include "List.aes"
 
 contract interface SaleOffer =
     entrypoint init : (address, address, int, int) => void
-    payable entrypoint kill : () => void
+    payable entrypoint do_a_backflip : () => void
 
 
 contract MaerketBase =

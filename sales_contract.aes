@@ -71,6 +71,9 @@ contract SalesOffer =
             Some(buyer) =>
                 if(Contract.balance > price)
                     Chain.spend(buyer, Contract.balance - price)
+                    true
+                else
+                    false
             None =>
                 dead_claim()
         put(state{price = price})
@@ -118,15 +121,19 @@ contract SalesOffer =
                 put(state{status = NEGO})
                 put(state{buyer = Some(Call.caller)})
             NEGO =>
-                require(Call.caller == state.buyer, "Nacho bid.")
-                require(Contract.balance >= state.price, "Stop being poor.")
-                if(Contract.balance > amount)
-                    Chain.spend(state.buyer, Contract.balance - amount)
+                switch(state.buyer)
+                    Some(buyer) =>
+                        require(Call.caller == buyer, "Nacho bid.")
+                        require(Contract.balance >= state.price, "Stop being poor.")
+                        if(Contract.balance > amount)
+                            Chain.spend(buyer, Contract.balance - amount)
             HOLD =>
-                require(Call.caller == state.buyer, "Nacho bid.")
-                require(Contract.balance >= state.price, "Stop being poor.")
-                if(Contract.balance > amount)
-                    Chain.spend(state.buyer, Contract.balance - amount)
+                switch(state.buyer)
+                    Some(buyer) =>
+                        require(Call.caller == buyer, "Nacho bid.")
+                        require(Contract.balance >= state.price, "Stop being poor.")
+                        if(Contract.balance > amount)
+                            Chain.spend(buyer, Contract.balance - amount)
                 put(state{status = NEGO})
 
     public stateful entrypoint hold() : unit =
@@ -157,7 +164,7 @@ contract SalesOffer =
                 "Knock it off, stinky")
         put(state{tsuriai = tsuriai})
 
-    public stateful entrypoint sweep_the_table() : unit =
+    public stateful entrypoint sweep_the_table() : bool =
         require(state.status == DONE, "Hillary has not yet arrived.")
         require(Call.caller == state.tsuriai, "Nope.")
         dead_claim()
@@ -190,6 +197,9 @@ contract SalesOffer =
         else
             false
 
-    private stateful function dead_claim() : unit =
+    private stateful function dead_claim() : bool =
         if(Contract.balance > 0)
             Chain.spend(state.tsuriai, Contract.balance)
+            true
+        else
+            false
