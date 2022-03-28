@@ -67,6 +67,12 @@ contract SalesOffer =
         require(state.status != DONE, "HiLlArY wUz HeRe.")
         require(Call.caller == Contract.creator, "Nacho shop!")
         require(price > 0, "You can't pay people to buy things, Mr. Keynes.")
+        switch(state.buyer)
+            Some(buyer) =>
+                if(Contract.balance > price)
+                    Chain.spend(buyer, Contract.balance - price)
+            None =>
+                dead_claim()
         put(state{price = price})
 
     public stateful entrypoint accept() : bool =
@@ -151,6 +157,11 @@ contract SalesOffer =
                 "Knock it off, stinky")
         put(state{tsuriai = tsuriai})
 
+    public stateful entrypoint sweep_the_table() : unit =
+        require(state.status == DONE, "Hillary has not yet arrived.")
+        require(Call.caller == state.tsuriai, "Nope.")
+        dead_claim()
+
 
 // Service/Public Network Interface
     public entrypoint price() : int =
@@ -166,10 +177,7 @@ contract SalesOffer =
 
 // Utilities
     function calc_fee() : int =
-        if(Contract.balance > 0)
-            Contract.balance / 50
-        else
-            0
+        Contract.balance / 50
 
     private stateful function refund() : bool =
         if(Contract.balance > 0)
