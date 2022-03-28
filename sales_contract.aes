@@ -13,18 +13,17 @@
  *
  * Calls to clones of this contract can come from five sources:
  *  1. The base contract (that cloned it in the first place)
- *      - kill()                      // Disable the contract at any state,
- *                                    // taking appropriate payout actions when it does
- *  2. The sellers who posted clones of this contract
- *      - init(maerket : MaerketBase,
+ *      - init(maerket : MaerketBase, // Get born
  *             id      : int,
  *             price   : int)
- *      - adjust(price : int)         // update during negotiation 
+ *      - do_a_backflip()             // Get the opposite of born
+ *  2. Sellers who posted clones of this contract
+ *      - adjust(price : int)         // update price
  *      - accept()                    // Sale is DONE
  *      - refuse()                    // Cancel a negotation
  *      - revoke()                    // Invalidate and disable this offer
  *  3. Buyers who are interested in buying through this contract
- *      - bid(int)                    // Update the bid amout in negotiation
+ *      - bid(price : int)            // Update the bid amout in negotiation
  *      - hold()                      // Set HOLD for price negotiation
  *      - cancel()                    // Back out of a purchase
  *  4. Maerket (the base contract)
@@ -37,16 +36,17 @@
 @compiler == 6.1
 
 contract interface MaerketBase =
-    stateful entrypoint close : (int)  => bool
+    stateful entrypoint close : (int) => bool
+
 
 contract SalesOffer =
     record state =
-        {id           : int,
-         maerket      : MaerketBase,
-         price        : int,
-         buyer        : option(address),
-         status       : status,
-         tsuriai      : address}
+        {id      : int,
+         maerket : MaerketBase,
+         price   : int,
+         buyer   : option(address),
+         status  : status,
+         tsuriai : address}
 
     datatype status = OPEN | NEGO | HOLD | DONE
 
@@ -63,23 +63,25 @@ contract SalesOffer =
          status  = OPEN,
          tsuriai = tsuriai}
 
-    public stateful entrypoint adjust(price : int) =
-        require(Call.caller == Contract.creator, "You're not the seller.")
-        require(price > 0, "Prices must be greater than zero.")
+    public stateful entrypoint adjust(price : int) : unit =
+        require(state.status != DONE, "HiLlArY wUz HeRe.")
+        require(Call.caller == Contract.creator, "Nacho shop!")
+        require(price > 0, "You can't pay people to buy things, Mr. Keynes.")
         put(state{price = price})
 
     public stateful entrypoint accept() : bool =
+        require(state.status == NEGO, "Sale is not under negotiation.")
         require(Call.caller == Contract.creator, "Nacho shop!")
         require(Contract.balance >= state.price, "Insufficient funds!")
-        require(state.status == NEGO, "Sale is not under negotiation.")
         Chain.spend(state.tsuriai, calc_fee())
         Chain.spend(Contract.creator, Contract.balance)
         put(state{status = DONE})
         state.maerket.close(state.id)
 
     public stateful entrypoint refuse() : unit =
+        require(state.status == NEGO || state.status == HOLD,
+                "Sale is not under negotiation.")
         require(Call.caller == Contract.creator, "Nacho shop!")
-        require(state.status == NEGO, "Incorrect status")
         switch(state.buyer)
             Some(buyer) =>
                 Chain.spend(buyer, Contract.balance)
@@ -89,29 +91,37 @@ contract SalesOffer =
         put(state{status = OPEN})
 
     public stateful entrypoint revoke() : bool =
+        require(state.status != DONE, "HiLlArY wUz HeRe.")
         require(Call.caller == Contract.creator, "Nacho shop!")
         switch(state.status)
-            OPEN =>
-                put(state{status = DONE})
-                state.maerket.close(state.id)
-            NEGO =>
-                refund()
-                put(state{status = DONE})
-                state.maerket.close(state.id)
-            HOLD =>
-                refund()
-                put(state{status = DONE})
-                state.maerket.close(state.id)
-            DONE =>
-                abort("Sale concluded.")
+            OPEN => dead_claim()
+            NEGO => refund()
+            HOLD => refund()
+        put(state{status = DONE})
+        state.maerket.close(state.id)
 
 
 // Buyer Interface
-    public stateful payable entrypoint bid() : unit =
-        require(state.status == OPEN, "Offer is not open.")
-        require(Call.value >= state.price, "Insufficient funds for this item.")
-        put(state{status = NEGO})
-        put(state{buyer = Some(Call.caller)})
+    public stateful payable entrypoint bid(amount: int) : unit =
+        require(state.status != DONE, "HiLlArY wUz HeRe.")
+        require(amount >= state.price, "Stop being poor.")
+        // put(Contract.balance += Call.value)
+        switch(state.status)
+            OPEN =>
+                require(Call.value >= state.price, "Stop being poor.")
+                put(state{status = NEGO})
+                put(state{buyer = Some(Call.caller)})
+            NEGO =>
+                require(Call.caller == state.buyer, "Nacho bid.")
+                require(Contract.balance >= state.price, "Stop being poor.")
+                if(Contract.balance > amount)
+                    Chain.spend(state.buyer, Contract.balance - amount)
+            HOLD =>
+                require(Call.caller == state.buyer, "Nacho bid.")
+                require(Contract.balance >= state.price, "Stop being poor.")
+                if(Contract.balance > amount)
+                    Chain.spend(state.buyer, Contract.balance - amount)
+                put(state{status = NEGO})
 
     public stateful entrypoint hold() : unit =
         require(state.status == NEGO, "Sale is not in negotiation")
@@ -165,10 +175,13 @@ contract SalesOffer =
         if(Contract.balance > 0)
             switch(state.buyer)
                 Some(buyer) =>
-                    Chain.spend(state.tsuriai, calc_fee())
                     Chain.spend(buyer, Contract.balance)
                     true
                 None =>
                     false
         else
             false
+
+    private stateful function dead_claim() : unit =
+        if(Contract.balance > 0)
+            Chain.spend(state.tsuriai, Contract.balance)

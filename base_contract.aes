@@ -46,7 +46,7 @@ contract MaerketBase =
          tsuriai   = tsuriai}
 
     public entrypoint template() : SaleOffer =
-    state.template
+        state.template
 
     public entrypoint lookup(id: int) : SaleOffer =
         switch(Map.lookup(id, state.contracts))
@@ -56,7 +56,9 @@ contract MaerketBase =
                 abort("Bad ID!")
 
     public stateful entrypoint post_sale(id: int, price: int) : SaleOffer =
-        require(!Map.member(id, state.contracts), "Sale already exists")
+        require(price > 0, "You cannot pay someone to buy things, Mr. Keynes.")
+        require(!Map.member(id, state.contracts),
+                "People don't think it be like it is, but it do.")
         switch(Chain.clone(ref       = state.template,
                            protected = true,
                            state.tsuriai,
@@ -79,15 +81,16 @@ contract MaerketBase =
                 false
 
     public stateful entrypoint update_maesters(keys: list(address)) : unit =
-        require(Call.caller == state.tsuriai, "You didn't say the magic word!")
+        require(Call.caller == state.tsuriai, "Nuh, uh uh! You didn't say the magic word!")
         put(state{maesters = keys})
 
-    public stateful entrypoint kill(id: int) : bool =
-        require(List.contains(Call.caller, state.maesters), "You're not a killer")
+    public stateful entrypoint epstein(id: int) : bool =
+        require(List.contains(Call.caller, state.maesters),
+                "C'mon, man! You only got the husband and son!")
         switch(Map.lookup(id, state.contracts))
             Some(target) =>
                 put(state{contracts = Map.delete(id, state.contracts)})
-                target.kill()
+                target.do_a_backflip()
                 true
             None =>
                 false
