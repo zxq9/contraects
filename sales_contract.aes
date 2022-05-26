@@ -1,21 +1,21 @@
 /*
- * Maerket Sales Offer
+ * Aegora Sales Offer
  *
  * Author:      Craig Everett <ceverett@tsuriai.jp>
  * Copyright:   Tsuriai Corporation (2022)
  * License:     GPLv3
  * Version:     0.1
  *
- * Sale offers at Maerket (maerket.psychobitch.party) are clones of this contract.
+ * Sale offers at Aegora (aegora.psychobitch.party) are clones of this contract.
  * (The name might be a little weird, but who looks at domain names anymore anyway?)
  * When a sale offer is created on the site, the seller signs a contract call to
  * 
  *
  * Calls to clones of this contract can come from five sources:
  *  1. The base contract (that cloned it in the first place)
- *      - init(maerket : MaerketBase, // Get born
- *             id      : int,
- *             price   : int)
+ *      - init(aegora : AegoraBase, // Get born
+ *             id     : int,
+ *             price  : int)
  *      - do_a_backflip()             // Get the opposite of born
  *  2. Sellers who posted clones of this contract
  *      - adjust(price : int)         // update price
@@ -26,23 +26,23 @@
  *      - bid(price : int)            // Update the bid amout in negotiation
  *      - hold()                      // Set HOLD for price negotiation
  *      - cancel()                    // Back out of a purchase
- *  4. Maerket (the base contract)
+ *  4. Aegora (the base contract)
  *      - reassign(tsuriai : address) // Reset Tsuriai's payable address
- *  5. The maerket's network service (or the public)
+ *  5. The market's network service (or the public)
  *      - price()                     // Check current contract price
  *      - status()                    // Check contract status
  */
 
 @compiler == 6.1
 
-contract interface MaerketBase =
+contract interface AegoraBase =
     stateful entrypoint close : (int) => bool
 
 
 contract SalesOffer =
     record state =
         {id      : int,
-         maerket : MaerketBase,
+         aegora  : AegoraBase,
          price   : int,
          buyer   : option(address),
          status  : status,
@@ -53,11 +53,11 @@ contract SalesOffer =
 
 // Seller Interface
     stateful entrypoint init(tsuriai : address,
-                             maerket : MaerketBase,
+                             aegora  : AegoraBase,
                              id      : int,
                              price   : int) : state =
         {id      = id,
-         maerket = maerket,
+         aegora  = aegora,
          price   = price,
          buyer   = None,
          status  = OPEN,
@@ -85,7 +85,7 @@ contract SalesOffer =
         Chain.spend(state.tsuriai, calc_fee())
         Chain.spend(Contract.creator, Contract.balance)
         put(state{status = DONE})
-        state.maerket.close(state.id)
+        state.aegora.close(state.id)
 
     public stateful entrypoint refuse() : unit =
         require(state.status == NEGO || state.status == HOLD,
@@ -103,7 +103,7 @@ contract SalesOffer =
             NEGO => refund()
             HOLD => refund()
         put(state{status = DONE})
-        state.maerket.close(state.id)
+        state.aegora.close(state.id)
 
 
 // Buyer Interface
@@ -153,15 +153,19 @@ contract SalesOffer =
                 abort("Nacho bid!")
 
 
-// Maerket Interface
+// Aegora Interface
     public stateful entrypoint reassign(tsuriai : address) : unit =
-        require(Call.caller == state.maerket.address || Call.origin == state.tsuriai,
+        require(Call.caller == state.aegora.address || Call.origin == state.tsuriai,
                 "Knock it off, stinky")
         put(state{tsuriai = tsuriai})
 
     public stateful entrypoint sweep_the_table() : bool =
         require(state.status == DONE, "Hillary has not yet arrived.")
         require(Call.caller == state.tsuriai, "Nope.")
+        dead_claim()
+
+    public stateful entrypoint do_a_backflip() : bool =
+        put(state{status = DONE})
         dead_claim()
 
 

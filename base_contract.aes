@@ -1,24 +1,24 @@
 /*
- * Maerket Base Contract
+ * Aegora Base Contract
  *
  * Author:      Craig Everett <ceverett@tsuriai.jp>
  * Copyright:   Tsuriai Corporation (2022)
  * License:     GPLv3
  * Version:     0.1
  *
- * This is the base contract for the maerket.
+ * This is the base contract for the market.
  * It is responsible for:
  *   - A library of valid contracts by type (sales offers, auctions, etc.)
- *   - Managing the authorized key list of maerket maesters
+ *   - Managing the authorized key list of market masters
  *   - Providing a single known endpoint to discover deployed, active contracts
- *   - Managing the lifecycle of a maerket contract
+ *   - Managing the lifecycle of a contract
  *
  * Lifecycle of a sales offer:
- *   1. The seller calls MaerketBase.post_sale() to create his SaleOffer
+ *   1. The seller calls AegoraBase.post_sale() to create his SaleOffer
  *   2. Sale proceeds
- *     IF it is succesful, the contract calls MaerketBase.close()
- *     IF it is revoked by seller, the contract calls MaerketBase.close()
- *     IF it times out or is killed by the maesters, one calls MaerketBase.kill()
+ *     IF it is succesful, the contract calls AegoraBase.close()
+ *     IF it is revoked by seller, the contract calls AegoraBase.close()
+ *     IF it times out or is killed by the maesters, one calls AegoraBase.kill()
  */
 
 @compiler == 6.1
@@ -26,11 +26,11 @@
 include "List.aes"
 
 contract interface SaleOffer =
-    entrypoint init : (address, address, int, int) => void
-    payable entrypoint do_a_backflip : () => void
+    entrypoint init : (address, address, int, int) => address
+    payable entrypoint do_a_backflip : () => bool
 
 
-contract MaerketBase =
+contract AegoraBase =
     record state =
         {contracts : map(int, SaleOffer),
          template  : SaleOffer,
