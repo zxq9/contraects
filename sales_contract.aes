@@ -13,7 +13,7 @@
  *
  * Calls to clones of this contract can come from five sources:
  *  1. The base contract (that cloned it in the first place)
- *      - init(aegora : AegoraBase, // Get born
+ *      - init(aegora : AegoraBase,   // Get born
  *             id     : int,
  *             price  : int)
  *      - do_a_backflip()             // Get the opposite of born
