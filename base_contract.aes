@@ -14,48 +14,48 @@
  *   - Managing the lifecycle of a contract
  *
  * Lifecycle of a sales offer:
- *   1. The seller calls AegoraBase.post_sale() to create his SaleOffer
+ *   1. The seller calls AegoraBase.post_sale() to create his SalesOffer
  *   2. Sale proceeds
  *     IF it is succesful, the contract calls AegoraBase.close()
  *     IF it is revoked by seller, the contract calls AegoraBase.close()
- *     IF it times out or is killed by the maesters, one calls AegoraBase.kill()
+ *     IF it times out or is killed by the maester, one calls AegoraBase.kill()
  */
 
 @compiler == 6.1
 
 include "List.aes"
 
-contract interface SaleOffer =
-    entrypoint init : (address, address, int, int) => address
+payable contract interface SalesOffer =
+    entrypoint init : (address, address, int, int) => void
     payable entrypoint do_a_backflip : () => bool
 
 
 contract AegoraBase =
     record state =
-        {contracts : map(int, SaleOffer),
-         template  : SaleOffer,
-         maesters  : list(address),
+        {contracts : map(int, SalesOffer),
+         template  : SalesOffer,
+         maester   : address,
          tsuriai   : address}
 
-    stateful entrypoint init(template : SaleOffer,
-                             maesters : list(address),
+    stateful entrypoint init(template : SalesOffer,
+                             maester  : address,
                              tsuriai  : address) : state = 
         {contracts = {},
          template  = template,
-         maesters  = maesters,
+         maester   = maester,
          tsuriai   = tsuriai}
 
-    public entrypoint template() : SaleOffer =
+    public entrypoint template() : SalesOffer =
         state.template
 
-    public entrypoint lookup(id: int) : SaleOffer =
+    public entrypoint lookup(id: int) : SalesOffer =
         switch(Map.lookup(id, state.contracts))
             Some(target) =>
                 target
             None =>
                 abort("Bad ID!")
 
-    public stateful entrypoint post_sale(id: int, price: int) : SaleOffer =
+    public stateful entrypoint post_sale(id: int, price: int) : SalesOffer =
         require(price > 0, "You cannot pay someone to buy things, Mr. Keynes.")
         require(!Map.member(id, state.contracts),
                 "People don't think it be like it is, but it do.")
@@ -80,12 +80,12 @@ contract AegoraBase =
             None =>
                 false
 
-    public stateful entrypoint update_maesters(keys: list(address)) : unit =
+    public stateful entrypoint update_maester(key: address) : unit =
         require(Call.caller == state.tsuriai, "Nuh, uh uh! You didn't say the magic word!")
-        put(state{maesters = keys})
+        put(state{maester = key})
 
     public stateful entrypoint epstein(id: int) : bool =
-        require(List.contains(Call.caller, state.maesters),
+        require(Call.caller == state.maester,
                 "C'mon, man! You only got the husband and son!")
         switch(Map.lookup(id, state.contracts))
             Some(target) =>
