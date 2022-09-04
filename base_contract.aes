@@ -57,8 +57,7 @@ contract AegoraBase =
 
     public stateful entrypoint post_sale(id: int, price: int) : SalesOffer =
         require(price > 0, "You cannot pay someone to buy things, Mr. Keynes.")
-        require(!Map.member(id, state.contracts),
-                "People don't think it be like it is, but it do.")
+        require(!Map.member(id, state.contracts), "People don't think it be like it is, but it do.")
         switch(Chain.clone(ref       = state.template,
                            protected = true,
                            state.tsuriai,
