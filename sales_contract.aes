@@ -33,7 +33,7 @@
  *      - status()                    // Check contract status
  */
 
-@compiler == 6.1
+@compiler == 7.0.1
 
 contract interface AegoraBase =
     stateful entrypoint close : (int) => bool

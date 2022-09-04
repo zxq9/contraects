@@ -21,7 +21,7 @@
  *     IF it times out or is killed by the maester, one calls AegoraBase.kill()
  */
 
-@compiler == 6.1
+@compiler == 7.0.1
 
 include "List.aes"
 
