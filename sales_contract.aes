@@ -42,7 +42,7 @@ contract interface AegoraBase =
 contract SalesOffer =
     record state =
         {id      : int,
-         aegora  : AegoraBase,
+         aegora  : address,
          price   : int,
          buyer   : option(address),
          status  : status,
@@ -53,7 +53,7 @@ contract SalesOffer =
 
 // Seller Interface
     stateful entrypoint init(tsuriai : address,
-                             aegora  : AegoraBase,
+                             aegora  : address,
                              id      : int,
                              price   : int) : state =
         {id      = id,
@@ -85,7 +85,7 @@ contract SalesOffer =
         Chain.spend(state.tsuriai, calc_fee())
         Chain.spend(Contract.creator, Contract.balance)
         put(state{status = DONE})
-        state.aegora.close(state.id)
+        Address.to_contract(state.aegora).close(state.id)
 
     public stateful entrypoint refuse() : unit =
         require(state.status == NEGO || state.status == HOLD,
@@ -103,7 +103,7 @@ contract SalesOffer =
             NEGO => refund()
             HOLD => refund()
         put(state{status = DONE})
-        state.aegora.close(state.id)
+        Address.to_contract(state.aegora).close(state.id)
 
 
 // Buyer Interface
@@ -155,7 +155,7 @@ contract SalesOffer =
 
 // Aegora Interface
     public stateful entrypoint reassign(tsuriai : address) : unit =
-        require(Call.caller == state.aegora.address || Call.origin == state.tsuriai,
+        require(Call.caller == state.aegora || Call.origin == state.tsuriai,
                 "Knock it off, stinky")
         put(state{tsuriai = tsuriai})
 
