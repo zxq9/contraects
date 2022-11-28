@@ -4,7 +4,7 @@
  * Author:      Craig Everett <ceverett@tsuriai.jp>
  * Copyright:   Tsuriai Corporation (2022)
  * License:     GPLv3
- * Version:     0.1
+ * Version:     1
  *
  * Sale offers at Aegora (aegora.psychobitch.party) are clones of this contract.
  * (The name might be a little weird, but who looks at domain names anymore anyway?)
@@ -31,15 +31,19 @@
  *  5. The market's network service (or the public)
  *      - price()                     // Check current contract price
  *      - status()                    // Check contract status
+ *      - seller()                    // Retrieve the seller's public key
+ *      - buyer()                     // Retrieve the buyer's public key
  */
 
 @compiler == 7.0.1
+
+include "Option.aes"
 
 contract interface AegoraBase =
     stateful entrypoint close : (int) => bool
 
 
-contract SalesOffer =
+payable contract SalesOffer =
     record state =
         {id      : int,
          aegora  : address,
@@ -84,14 +88,16 @@ contract SalesOffer =
         require(state.status == NEGO, "Sale is not under negotiation.")
         require(Call.caller == state.seller, "Nacho shop!")
         require(Contract.balance >= state.price, "Insufficient funds!")
+        let buyer = Option.force(state.buyer)
+        if(Contract.balance > state.price)
+            Chain.spend(buyer, Contract.balance - state.price)
         Chain.spend(state.tsuriai, calc_fee())
         Chain.spend(state.seller, Contract.balance)
         put(state{status = DONE})
         Address.to_contract(state.aegora).close(state.id)
 
     public stateful entrypoint refuse() : unit =
-        require(state.status == NEGO || state.status == HOLD,
-                "Sale is not under negotiation.")
+        require(state.status == NEGO || state.status == HOLD, "Sale is not under negotiation.")
         require(Call.caller == state.seller, "Nacho shop!")
         refund()
         put(state{buyer = None})
@@ -157,8 +163,7 @@ contract SalesOffer =
 
 // Aegora Interface
     public stateful entrypoint reassign(tsuriai : address) : unit =
-        require(Call.caller == state.aegora || Call.origin == state.tsuriai,
-                "Knock it off, stinky")
+        require(Call.caller == state.aegora || Call.origin == state.tsuriai, "Knock it off, stinky")
         put(state{tsuriai = tsuriai})
 
     public stateful entrypoint sweep_the_table() : bool =
@@ -182,6 +187,12 @@ contract SalesOffer =
             HOLD => "hold"
             DONE => "done"
 
+    public entrypoint seller() : address =
+        state.seller
+    
+    public entrypoint buyer() : address =
+        require(state.status != OPEN, "No buyer!")
+        Option.force(state.buyer)
 
 // Utilities
     function calc_fee() : int =

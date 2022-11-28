@@ -4,7 +4,7 @@
  * Author:      Craig Everett <ceverett@tsuriai.jp>
  * Copyright:   Tsuriai Corporation (2022)
  * License:     GPLv3
- * Version:     0.1
+ * Version:     1
  *
  * This is the base contract for the market.
  * It is responsible for:
@@ -19,11 +19,26 @@
  *     IF it is succesful, the contract calls AegoraBase.close()
  *     IF it is revoked by seller, the contract calls AegoraBase.close()
  *     IF it times out or is killed by the maester, one calls AegoraBase.kill()
+ *
+ * Calls to this contract can come from one of five sources:
+ * 1. The Maester (essentially the administrator)
+ *      - init(template : SalesOffer                // Posts the initial contract
+ *             maester  : address                   // with a reference to a template
+ *             tsuriai  : address)
+ *      - update_template(contract : SalesOffer)    // Update the template address
+ *      - epstein(id : bool)                        // Force a contract to close
+ * 2. Sellers
+ *      - post_sale(id : int, price : int)          // Create a new sale contract clone
+ * 3. The Aegora site (or anyone really, but mainly useful for the site backend)
+ *      - lookup(id)                                // Looks up a sale contract's address
+ *      - template()                                // Looks up the current sales contract template
+ * 4. A sales contract
+ *      - close(id : int)                           // A closing sale contract may call to remove itself from the active index
+ * 5. The Tsuriai master Key
+ *      - update_maester(key : address)             // Change the Maester key for operational reasons
  */
 
 @compiler == 7.0.1
-
-include "List.aes"
 
 payable contract interface SalesOffer =
     entrypoint init : (address, address, int, int) => void
@@ -47,6 +62,10 @@ contract AegoraBase =
 
     public entrypoint template() : SalesOffer =
         state.template
+
+    public stateful entrypoint update_template(source : SalesOffer) : unit =
+        require(Call.caller == state.maester, "Nuh, uh uh! You didn't say the magic word!")
+        put(state{template = source})
 
     public entrypoint lookup(id: int) : SalesOffer =
         switch(Map.lookup(id, state.contracts))
@@ -84,8 +103,7 @@ contract AegoraBase =
         put(state{maester = key})
 
     public stateful entrypoint epstein(id: int) : bool =
-        require(Call.caller == state.maester,
-                "C'mon, man! You only got the husband and son!")
+        require(Call.caller == state.maester, "C'mon, man! You only got the husband and son!")
         switch(Map.lookup(id, state.contracts))
             Some(target) =>
                 put(state{contracts = Map.delete(id, state.contracts)})
