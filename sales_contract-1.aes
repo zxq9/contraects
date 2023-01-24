@@ -13,9 +13,13 @@
  *
  * Calls to clones of this contract can come from five sources:
  *  1. The base contract (that cloned it in the first place)
- *      - init(aegora : AegoraBase,   // Get born
- *             id     : int,
- *             price  : int)
+ *      - init(tsuriai : address,     // Service fee destination 
+ *             aegora  : AegoraBase,  // Get born
+ *             agent   : address,     // Deployment agent address
+ *             portion : int,         // Deploying agent's fee portion
+ *             seller  : address,     // Address of the seller
+ *             id      : int,
+ *             price   : int)
  *      - do_a_backflip()             // Get the opposite of born
  *  2. Sellers who posted clones of this contract
  *      - adjust(price : int)         // update price
@@ -31,6 +35,7 @@
  *  5. The market's network service (or the public)
  *      - price()                     // Check current contract price
  *      - status()                    // Check contract status
+ *      - agent()                     // Retrieve the agent's public key (usually the same as the seller)
  *      - seller()                    // Retrieve the seller's public key
  *      - buyer()                     // Retrieve the buyer's public key
  */
@@ -47,6 +52,8 @@ payable contract SalesOffer =
     record state =
         {id      : int,
          aegora  : address,
+         agent   : address,
+         portion : int,
          price   : int,
          seller  : address,
          buyer   : option(address),
@@ -59,12 +66,17 @@ payable contract SalesOffer =
 // Seller Interface
     stateful entrypoint init(tsuriai : address,
                              aegora  : address,
+                             agent   : address,
+                             portion : int,
+                             seller  : address,
                              id      : int,
                              price   : int) : state =
         {id      = id,
          aegora  = aegora,
+         agent   = Call.origin,
+         portion = portion,
          price   = price,
-         seller  = Call.origin,
+         seller  = seller,
          buyer   = None,
          status  = OPEN,
          tsuriai = tsuriai}
@@ -92,6 +104,8 @@ payable contract SalesOffer =
         if(Contract.balance > state.price)
             Chain.spend(buyer, Contract.balance - state.price)
         Chain.spend(state.tsuriai, calc_fee())
+        if(state.portion > 0)
+            Chain.spend(state.agent, (Contract.balance / state.portion))
         Chain.spend(state.seller, Contract.balance)
         put(state{status = DONE})
         Address.to_contract(state.aegora).close(state.id)
@@ -186,6 +200,9 @@ payable contract SalesOffer =
             NEGO => "nego"
             HOLD => "hold"
             DONE => "done"
+
+    public entrypoint agent() : address =
+        state.agent
 
     public entrypoint seller() : address =
         state.seller

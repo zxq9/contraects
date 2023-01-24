@@ -41,7 +41,7 @@
 @compiler == 7.0.1
 
 payable contract interface SalesOffer =
-    entrypoint init : (address, address, int, int) => void
+    entrypoint init : (address, address, address, int, address, int, int) => void
     payable entrypoint do_a_backflip : () => bool
 
 
@@ -74,13 +74,16 @@ contract AegoraBase =
             None =>
                 abort("Bad ID!")
 
-    public stateful entrypoint post_sale(id: int, price: int) : SalesOffer =
+    public stateful entrypoint post_sale(agent : address, portion : int, seller : address, id: int, price: int) : SalesOffer =
         require(price > 0, "You cannot pay someone to buy things, Mr. Keynes.")
         require(!Map.member(id, state.contracts), "People don't think it be like it is, but it do.")
         switch(Chain.clone(ref       = state.template,
                            protected = true,
                            state.tsuriai,
                            Contract.address,
+                           agent,
+                           portion,
+                           seller,
                            id,
                            price))
             Some(posted) =>
