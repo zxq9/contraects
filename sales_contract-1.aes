@@ -186,6 +186,7 @@ payable contract SalesOffer =
         dead_claim()
 
     public stateful entrypoint do_a_backflip() : bool =
+        require(Call.caller == state.aegora, "Too late, Nathan.")
         put(state{status = DONE})
         dead_claim()
 
